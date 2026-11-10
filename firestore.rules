@@ -1,0 +1,25 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /hotspots/{hotspotId} {
+      // Kila mtu anayeingia (hata anonymous) anaweza kusoma mitandao
+      allow read: if request.auth != null;
+
+      // Kuongeza: mtumiaji lazima awe ameingia, na "addedBy" iwe uid yake mwenyewe
+      allow create: if request.auth != null
+                    && request.resource.data.addedBy == request.auth.uid
+                    && request.resource.data.ssid is string
+                    && request.resource.data.password is string
+                    && request.resource.data.placeName is string;
+
+      // Kura (upvote/downvote) - ruhusu kuongeza tu kwenye hesabu, si kubadilisha taarifa nyingine
+      allow update: if request.auth != null &&
+                    request.resource.data.diff(resource.data).affectedKeys()
+                      .hasOnly(['upvotes', 'downvotes', 'verifiedCount']);
+
+      // Kufuta: mwenye kuongeza tu ndiye anaweza kufuta mchango wake
+      allow delete: if request.auth != null && resource.data.addedBy == request.auth.uid;
+    }
+  }
+}
